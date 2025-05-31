@@ -1,42 +1,24 @@
 const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const cors = require('cors');
-
 const app = express();
-app.use(cors());
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-  }
-});
+const http = require('http').createServer(app);
+const io = require('socket.io')(http);
 
-let messages = []; // Store messages with structure: { id, user, text, replyTo }
+const PORT = process.env.PORT || 10000;
 
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
+app.use(express.static('public'));
 
-  // Send existing messages to new user
-  socket.emit('init', messages);
+io.on('connection', socket => {
+  console.log('A user connected');
 
-  // Handle new messages
-  socket.on('message', (msg) => {
-    const message = {
-      id: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
-      user: msg.user,
-      text: msg.text,
-      replyTo: msg.replyTo || null,
-      timestamp: new Date().toISOString(),
-    };
-    messages.push(message);
-    io.emit('message', message); // broadcast to all clients
+  socket.on('chat message', msg => {
+    io.emit('chat message', msg);
   });
 
   socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
+    console.log('A user disconnected');
   });
 });
 
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
+http.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
